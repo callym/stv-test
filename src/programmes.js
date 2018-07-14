@@ -1,5 +1,6 @@
 // @ts-check
 import React from 'react';
+import classNames from 'classnames';
 
 const width = 1024;
 const height = 576;
@@ -39,8 +40,9 @@ export class Programme {
  */
 export class ProgrammeComponent extends React.Component {
   render() {
+    const classes = classNames({ inactive: this.props.programme.active === false })
     return (
-      <tr>
+      <tr className={ classes }>
         <td>{ this.props.programme.id }</td>
         <td>{ this.props.programme.name }</td>
         <td>{ this.props.programme.description }</td>
