@@ -1,6 +1,7 @@
 // @ts-check
 import React from 'react';
 import classNames from 'classnames';
+import { Button } from 'reactstrap';
 
 const width = 1024;
 const height = 576;
@@ -33,12 +34,19 @@ export class Programme {
 /**
  * @typedef { Object } Props
  * @property { Programme } programme
+ * @property { (Programme) => void } remove
  */
 
 /**
  * @extends {React.Component<Props, {}>}
  */
 export class ProgrammeComponent extends React.Component {
+  remove = () => {
+    if (this.props.remove != null) {
+      this.props.remove(this.props.programme);
+    }
+  }
+
   render() {
     const classes = classNames({ inactive: this.props.programme.active === false })
     return (
@@ -47,6 +55,11 @@ export class ProgrammeComponent extends React.Component {
         <td>{ this.props.programme.name }</td>
         <td>{ this.props.programme.description }</td>
         <td>{ this.props.programme.active ? 'Active' : 'Inactive' }</td>
+        <td>
+          <Button onClick={this.remove} color="danger" size="sm">
+            ×
+          </Button>
+        </td>
       </tr>
     );
   }
