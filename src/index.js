@@ -1,17 +1,21 @@
 // @ts-check
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { ListGroup, ListGroupItem } from 'reactstrap';
+import { Table } from 'reactstrap';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
-import { Programme } from './programmes';
+import { Programme, ProgrammeComponent } from './programmes';
 
 /**
- * @typedef { { programmes: Programme[] } } State
+ * @typedef { Object } State
+ * @property { Programme[] } programmes
  */
 
+ /**
+ * @extends {React.Component<{}, State>}
+ */
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -31,13 +35,21 @@ class App extends React.Component {
 
   render() {
     return (
-      <ListGroup>
-        {this.state.programmes.map(p => (
-          <ListGroupItem>
-            {p.name}
-          </ListGroupItem>
-        ))}
-      </ListGroup>
+      <Table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Active Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {this.state.programmes.map(programme => (
+            <ProgrammeComponent programme={programme}/>
+          ))}
+        </tbody>
+      </Table>
     );
   }
 }

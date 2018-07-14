@@ -1,3 +1,6 @@
+// @ts-check
+import React from 'react';
+
 const width = 1024;
 const height = 576;
 
@@ -23,5 +26,26 @@ export class Programme {
       /** @type { string } */
       this.imageUrl = `https://files.stv.tv/imagebase/${i.masterFilepath}/${width}x${height}/${i.filename}`;
     }
+  }
+}
+
+/**
+ * @typedef { Object } Props
+ * @property { Programme } programme
+ */
+
+/**
+ * @extends {React.Component<Props, {}>}
+ */
+export class ProgrammeComponent extends React.Component {
+  render() {
+    return (
+      <tr>
+        <td>{ this.props.programme.id }</td>
+        <td>{ this.props.programme.name }</td>
+        <td>{ this.props.programme.description }</td>
+        <td>{ this.props.programme.active ? 'Active' : 'Inactive' }</td>
+      </tr>
+    );
   }
 }
