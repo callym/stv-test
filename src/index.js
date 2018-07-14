@@ -11,6 +11,8 @@ import { Programme, ProgrammeComponent } from './programmes';
 /**
  * @typedef { Object } State
  * @property { Programme[] } programmes
+ * @property { { sortBy: string, ord: string } } sortBy
+ * @property { string } filterBy
  * @property { boolean } addModal
  * @property { { isValid: boolean, message: string} } addProgrammeFormValid
  * @property { Object } addProgrammeForm
@@ -29,6 +31,11 @@ class App extends React.Component {
     /** @type { State } */
     this.state = {
       programmes: [],
+      sortBy: {
+        sortBy: null,
+        ord: null,
+      },
+      filterBy: null,
       addModal: false,
       addProgrammeForm: {
         active: false,
@@ -48,16 +55,24 @@ class App extends React.Component {
   filterProgrammes = (event) => {
     let programmes = this.allProgrammes.slice();
 
-    if (event == null) {
+    if (event == null && this.state.filterBy == null) {
       this.setState({ programmes });
       return;
+    }
+
+    if (event == null) {
+      event = {
+        target: {
+          value: this.state.filterBy,
+        }
+      };
     }
 
     /** @type { string } */
     const text = event.target.value ? event.target.value.toLowerCase() : '';
 
     if (text === '') {
-      this.setState({ programmes });
+      this.setState({ programmes, filterBy: null });
       return;
     }
 
@@ -66,7 +81,69 @@ class App extends React.Component {
       return name.includes(text);
     });
 
-    this.setState({ programmes });
+    this.setState({ programmes, filterBy: text });
+  }
+
+  /**
+   * @param { { sortBy: string, ord?: string } } [sortBy]
+   */
+  sortProgrammes = (sortBy) => {
+    if (sortBy == null) {
+      sortBy = this.state.sortBy;
+    }
+
+    let programmes = this.allProgrammes.slice();
+
+    if (sortBy.ord == null) {
+      if (sortBy.sortBy !== this.state.sortBy.sortBy) {
+        sortBy.ord = 'asc';
+      } else {
+        sortBy.ord = this.state.sortBy.ord === 'asc' ? 'desc' : 'asc';
+      }
+    }
+
+    if (sortBy.sortBy === 'id') {
+      programmes.sort((a, b) => {
+        if (sortBy.ord === 'asc') {
+          return a.id - b.id;
+        }
+        return b.id - a.id;
+      });
+    }
+
+    if (sortBy.sortBy === 'name') {
+      programmes.sort((a, b) => {
+        const aN = a.name.toLowerCase();
+        const bN = b.name.toLowerCase();
+
+        if (sortBy.ord === 'asc') {
+          if (aN < bN) {
+            return -1;
+          }
+          if (aN > bN) {
+            return 1;
+          }
+          return 0;
+        }
+
+        if (aN > bN) {
+          return -1;
+        }
+        if (aN < bN) {
+          return 1;
+        }
+        return 0;
+      });
+    }
+
+    this.allProgrammes = programmes;
+    this.filterProgrammes();
+    this.setState({
+      sortBy: {
+        sortBy: sortBy.sortBy,
+        ord: sortBy.ord,
+      },
+    });
   }
 
   showAddModal = () => {
@@ -96,6 +173,7 @@ class App extends React.Component {
     const programme = new Programme(this.state.addProgrammeForm);
     this.allProgrammes.push(programme);
     this.filterProgrammes();
+    this.sortProgrammes();
     this.hideAddModal();
   }
 
@@ -140,6 +218,20 @@ class App extends React.Component {
   }
 
   render() {
+    const up = '↑';
+    const down = '↓';
+
+    let sortById = '';
+    let sortByName = '';
+
+    const sortBySymbol = () => this.state.sortBy.ord === 'asc' ? up : down;
+
+    if (this.state.sortBy.sortBy === 'id') {
+      sortById = sortBySymbol();
+    } else if (this.state.sortBy.sortBy === 'name') {
+      sortByName = sortBySymbol();
+    }
+
     return (
       <div>
         <Form onSubmit={e => e.preventDefault()}>
@@ -156,8 +248,14 @@ class App extends React.Component {
         <Table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
+              <th onClick={() => this.sortProgrammes({ sortBy: 'id' })}>
+                ID
+                { sortById }
+              </th>
+              <th onClick={() => this.sortProgrammes({ sortBy: 'name' })}>
+                Name
+                { sortByName }
+              </th>
               <th>Description</th>
               <th>Active Status</th>
               <th></th>
