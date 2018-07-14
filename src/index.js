@@ -115,6 +115,10 @@ class App extends React.Component {
       return { isValid: false, message: 'ID is required.' };
     }
 
+    if (isNaN(+data.id)) {
+      return { isValid: false, message: 'ID must be a number.' };
+    }
+
     const programme = this.allProgrammes.find(p => p.id == data.id);
     if (programme != null) {
       return { isValid: false, message: `ID must be unique. Conflicts with "${programme.name}".` };
