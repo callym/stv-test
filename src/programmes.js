@@ -27,6 +27,9 @@ export class Programme {
 
     /** @type { string } */
     this.description = data.shortDescription || '';
+    if (this.description === '' && data.description != null) {
+      this.description = data.description;
+    }
 
     /** @type { boolean } */
     this.active = data.active || false;

@@ -1,12 +1,15 @@
 // @ts-check
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Col, Form, FormGroup, Label, Input, Table } from 'reactstrap';
+import localforage from 'localforage';
+import { Button, Row, Col, Form, FormGroup, Label, Input, Table } from 'reactstrap';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
 import { Programme, ProgrammeComponent, EditProgrammeComponent } from './programmes';
+
+const store = localforage.createInstance({ name: 'stv-test' });
 
 /**
  * @typedef { Object } State
@@ -39,10 +42,16 @@ class App extends React.Component {
   }
 
   async componentDidMount() {
-    const res = await fetch('./programmes.json');
-    const data = await res.json();
+    let data = await store.getItem('programmes');
+
+    if (data == null) {
+      const res = await fetch('./programmes.json');
+      const json = await res.json();
+      data = json.results;
+    }
+
     let allProgrammes = new Map();
-    const programmes = data.results.map(r => new Programme(r));
+    const programmes = data.map(r => new Programme(r));
     programmes.forEach(p => allProgrammes.set(p.id, p));
     this.setState({ programmes, allProgrammes }, () => this.refreshProgrammesHandler());
   }
@@ -134,6 +143,7 @@ class App extends React.Component {
   /**
    * @param { { sortBy: string, ord?: string } } [sortBy]
    * @param { Object } [event]
+   * @returns { Promise<any> }
    */
   refreshProgrammesHandler = (sortBy, event) => {
     if (sortBy == null) {
@@ -145,30 +155,32 @@ class App extends React.Component {
     let sorted = this.sortProgrammes(programmes, sortBy);
     let filtered = this.filterProgrammes(sorted.programmes, event);
 
-    this.setState({
+    return new Promise((resolve, reject) => this.setState({
       programmes: filtered.programmes,
       sortBy: {
         sortBy: sorted.sortBy.sortBy,
         ord: sorted.sortBy.ord,
       },
       filterBy: filtered.filterBy,
-    });
+    }, () => resolve()));
   }
 
+  /** @returns { Promise<any> } */
   showAddModal = () => {
-    this.setState({ addModal: true });
+    return new Promise((resolve, reject) => this.setState({ addModal: true }, () => resolve()));
   }
 
+  /** @returns { Promise<any> } */
   hideAddModal = () => {
-    this.setState({ addModal: false, selectedProgramme: null });
+    return new Promise((resolve, reject) => this.setState({ addModal: false, selectedProgramme: null }, () => resolve()));
   }
 
   /**
    * @param { Programme? } programme
    * @param { Programme? } oldProgramme
    */
-  addProgramme = (programme, oldProgramme) => {
-    this.hideAddModal();
+  addProgramme = async (programme, oldProgramme) => {
+    await this.hideAddModal();
 
     if (programme == null) {
       return;
@@ -182,9 +194,13 @@ class App extends React.Component {
 
     allProgrammes.set(programme.id, programme);
 
-    this.setState({ allProgrammes }, () => this.refreshProgrammesHandler());
+    await new Promise((resolve, reject) => this.setState({ allProgrammes }, async () => {
+      await this.refreshProgrammesHandler();
+      await this.saveData();
+      resolve();
+    }));
 
-    this.hideAddModal();
+    await this.hideAddModal();
   }
 
   /**
@@ -194,7 +210,10 @@ class App extends React.Component {
     let allProgrammes = new Map(this.state.allProgrammes.entries());
     allProgrammes.delete(programme.id);
 
-    this.setState({ allProgrammes }, () => this.refreshProgrammesHandler());
+    this.setState({ allProgrammes }, async () => {
+      await this.refreshProgrammesHandler();
+      await this.saveData();
+    });
   }
 
   /**
@@ -202,6 +221,21 @@ class App extends React.Component {
    */
   selectProgramme = (programme) => {
     this.setState({ selectedProgramme: programme }, () => this.showAddModal());
+  }
+
+  /** @returns { Promise<any> } */
+  saveData() {
+    return store.setItem('programmes', Array.from(this.state.allProgrammes.values()));
+  }
+
+  /** @returns { Promise<any> } */
+  deleteData() {
+    return store.removeItem('programmes');
+  }
+
+  deleteDataHandler = async () => {
+    await this.deleteData();
+    this.componentDidMount();
   }
 
   render() {
@@ -221,15 +255,24 @@ class App extends React.Component {
 
     return (
       <div>
+        <Row>
+          <Col sm={5}>
+            <Button color="success" onClick={this.showAddModal}>
+              Add New Programme
+            </Button>
+          </Col>
+          <Col sm={5}>
+            <Button color="danger" onClick={this.deleteDataHandler}>
+              Delete Local Data
+            </Button>
+          </Col>
+        </Row>
         <Form onSubmit={e => e.preventDefault()}>
           <FormGroup row>
             <Label for="search" sm={2}>Search</Label>
-            <Col sm={8}>
+            <Col sm={10}>
               <Input type="text" name="search" id="search" onChange={e => this.refreshProgrammesHandler(null, e)}/>
             </Col>
-            <Button color="success" onClick={this.showAddModal}>
-              Add
-            </Button>
           </FormGroup>
         </Form>
         <Table>
