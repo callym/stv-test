@@ -255,21 +255,21 @@ class App extends React.Component {
 
     return (
       <div>
-        <Row>
+        <Row className="top-buttons">
           <Col sm={5}>
-            <Button color="success" onClick={this.showAddModal}>
+            <Button color="success" onClick={this.showAddModal} block outline>
               Add New Programme
             </Button>
           </Col>
           <Col sm={5}>
-            <Button color="danger" onClick={this.deleteDataHandler}>
+            <Button color="danger" onClick={this.deleteDataHandler} block outline>
               Delete Local Data
             </Button>
           </Col>
         </Row>
         <Form onSubmit={e => e.preventDefault()}>
           <FormGroup row>
-            <Label for="search" sm={2}>Search</Label>
+            <Label for="search" sm={2} className="search">Search</Label>
             <Col sm={10}>
               <Input type="text" name="search" id="search" onChange={e => this.refreshProgrammesHandler(null, e)}/>
             </Col>
@@ -287,7 +287,8 @@ class App extends React.Component {
                 { sortByName }
               </th>
               <th>Description</th>
-              <th>Active Status</th>
+              <th>Status</th>
+              <th></th>
               <th></th>
             </tr>
           </thead>

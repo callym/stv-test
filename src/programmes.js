@@ -74,12 +74,13 @@ export class ProgrammeComponent extends React.Component {
         <td>{ this.props.programme.description }</td>
         <td>{ this.props.programme.active ? 'Active' : 'Inactive' }</td>
         <td>
-          <Button onClick={this.remove} color="danger" size="sm" block>
-            ×
-          </Button>
-          <br/>
           <Button onClick={this.select} color="primary" size="sm" block>
             ✎
+          </Button>
+        </td>
+        <td>
+          <Button onClick={this.remove} color="danger" size="sm" block>
+            ×
           </Button>
         </td>
       </tr>
@@ -184,7 +185,7 @@ export class EditProgrammeComponent extends React.Component {
 
   render() {
     return (
-      <Modal isOpen={true}>
+      <Modal isOpen={true} size="lg">
         <ModalHeader>Add Programme</ModalHeader>
         <ModalBody>
           <Form onSubmit={e => e.preventDefault()}>
@@ -207,12 +208,12 @@ export class EditProgrammeComponent extends React.Component {
               </Col>
             </FormGroup>
             <FormGroup row>
-              <Label for="active" sm={2}>Active</Label>
+              <Col sm={2}/>
               <Col sm={10}>
                 <FormGroup check inline>
                   <Label check>
                     <Input type="checkbox" name="active" id="active" checked={this.state.programme.active} onChange={this.handleEditProgramme}/>{' '}
-                    Check me out
+                    Active
                   </Label>
                 </FormGroup>
               </Col>

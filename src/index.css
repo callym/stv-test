@@ -1,3 +1,17 @@
 .inactive {
   color: lightgray;
 }
+
+#root {
+  max-width: 768px;
+  margin: 0 auto;
+}
+
+.search {
+  text-align: right;
+}
+
+.top-buttons {
+  margin: 1em 0;
+  justify-content: center;
+}
