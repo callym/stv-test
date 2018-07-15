@@ -1,21 +1,21 @@
 // @ts-check
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Col, Form, FormGroup, Label, Input, Modal, ModalHeader, ModalBody, ModalFooter, Table } from 'reactstrap';
+import { Button, Col, Form, FormGroup, Label, Input, Table } from 'reactstrap';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
-import { Programme, ProgrammeComponent } from './programmes';
+import { Programme, ProgrammeComponent, EditProgrammeComponent } from './programmes';
 
 /**
  * @typedef { Object } State
+ * @property { Map<number, Programme> } allProgrammes
  * @property { Programme[] } programmes
+ * @property { Programme } [selectedProgramme]
  * @property { { sortBy: string, ord: string } } sortBy
  * @property { string } filterBy
  * @property { boolean } addModal
- * @property { { isValid: boolean, message: string} } addProgrammeFormValid
- * @property { Object } addProgrammeForm
  */
 
  /**
@@ -25,39 +25,36 @@ class App extends React.Component {
   constructor(props) {
     super(props);
 
-    /** @type { Programme[] } */
-    this.allProgrammes = [];
-
     /** @type { State } */
     this.state = {
+      allProgrammes: new Map(),
       programmes: [],
       sortBy: {
-        sortBy: null,
+        sortBy: 'id',
         ord: null,
       },
       filterBy: null,
       addModal: false,
-      addProgrammeForm: {
-        active: false,
-      },
-      addProgrammeFormValid: this.addProgrammeValid({ id: null }),
     };
   }
 
   async componentDidMount() {
     const res = await fetch('./programmes.json');
     const data = await res.json();
+    let allProgrammes = new Map();
     const programmes = data.results.map(r => new Programme(r));
-    this.allProgrammes = programmes;
-    this.setState({ programmes });
+    programmes.forEach(p => allProgrammes.set(p.id, p));
+    this.setState({ programmes, allProgrammes }, () => this.refreshProgrammesHandler());
   }
 
-  filterProgrammes = (event) => {
-    let programmes = this.allProgrammes.slice();
-
+  /**
+   * @param { Programme[] } programmes
+   * @param { Object } event
+   * @returns { { programmes: Programme[], filterBy?: string } }
+   */
+  filterProgrammes(programmes, event) {
     if (event == null && this.state.filterBy == null) {
-      this.setState({ programmes });
-      return;
+      return { programmes };
     }
 
     if (event == null) {
@@ -72,8 +69,7 @@ class App extends React.Component {
     const text = event.target.value ? event.target.value.toLowerCase() : '';
 
     if (text === '') {
-      this.setState({ programmes, filterBy: null });
-      return;
+      return { programmes, filterBy: null };
     }
 
     programmes = programmes.filter(programme => {
@@ -81,19 +77,15 @@ class App extends React.Component {
       return name.includes(text);
     });
 
-    this.setState({ programmes, filterBy: text });
+    return { programmes, filterBy: text };
   }
 
   /**
-   * @param { { sortBy: string, ord?: string } } [sortBy]
+   * @param { Programme[] } programmes
+   * @param { { sortBy: string, ord?: string } } sortBy
+   * @returns { { programmes: Programme[], sortBy: Object } }
    */
-  sortProgrammes = (sortBy) => {
-    if (sortBy == null) {
-      sortBy = this.state.sortBy;
-    }
-
-    let programmes = this.allProgrammes.slice();
-
+  sortProgrammes(programmes, sortBy) {
     if (sortBy.ord == null) {
       if (sortBy.sortBy !== this.state.sortBy.sortBy) {
         sortBy.ord = 'asc';
@@ -136,13 +128,30 @@ class App extends React.Component {
       });
     }
 
-    this.allProgrammes = programmes;
-    this.filterProgrammes();
+    return { programmes, sortBy };
+  }
+
+  /**
+   * @param { { sortBy: string, ord?: string } } [sortBy]
+   * @param { Object } [event]
+   */
+  refreshProgrammesHandler = (sortBy, event) => {
+    if (sortBy == null) {
+      sortBy = this.state.sortBy;
+    }
+
+    let programmes = Array.from(this.state.allProgrammes.values());
+
+    let sorted = this.sortProgrammes(programmes, sortBy);
+    let filtered = this.filterProgrammes(sorted.programmes, event);
+
     this.setState({
+      programmes: filtered.programmes,
       sortBy: {
-        sortBy: sortBy.sortBy,
-        ord: sortBy.ord,
+        sortBy: sorted.sortBy.sortBy,
+        ord: sorted.sortBy.ord,
       },
+      filterBy: filtered.filterBy,
     });
   }
 
@@ -151,29 +160,30 @@ class App extends React.Component {
   }
 
   hideAddModal = () => {
-    this.setState({ addModal: false });
+    this.setState({ addModal: false, selectedProgramme: null });
   }
 
-  handleAddProgramme = (event) => {
-    const name = event.target.name;
-    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+  /**
+   * @param { Programme? } programme
+   * @param { Programme? } oldProgramme
+   */
+  addProgramme = (programme, oldProgramme) => {
+    this.hideAddModal();
 
-    const addProgrammeForm = {
-      ...this.state.addProgrammeForm,
-      [name]: value,
-    };
+    if (programme == null) {
+      return;
+    }
 
-    this.setState({
-      addProgrammeForm,
-      addProgrammeFormValid: this.addProgrammeValid(addProgrammeForm),
-    });
-  }
+    let allProgrammes = new Map(this.state.allProgrammes.entries());
 
-  addProgramme = () => {
-    const programme = new Programme(this.state.addProgrammeForm);
-    this.allProgrammes.push(programme);
-    this.filterProgrammes();
-    this.sortProgrammes();
+    if (oldProgramme != null) {
+      allProgrammes.delete(oldProgramme.id);
+    }
+
+    allProgrammes.set(programme.id, programme);
+
+    this.setState({ allProgrammes }, () => this.refreshProgrammesHandler());
+
     this.hideAddModal();
   }
 
@@ -181,40 +191,17 @@ class App extends React.Component {
    * @param { Programme } programme
    */
   removeProgramme = (programme) => {
-    this.allProgrammes = this.allProgrammes.filter(p => p.id !== programme.id);
-    this.filterProgrammes();
+    let allProgrammes = new Map(this.state.allProgrammes.entries());
+    allProgrammes.delete(programme.id);
+
+    this.setState({ allProgrammes }, () => this.refreshProgrammesHandler());
   }
 
   /**
-   * @returns { { isValid: boolean, message: string} }
+   * @param { Programme } programme
    */
-  addProgrammeValid = (data) => {
-    if (data.id == null) {
-      return { isValid: false, message: 'ID is required.' };
-    }
-
-    if (isNaN(+data.id)) {
-      return { isValid: false, message: 'ID must be a number.' };
-    }
-
-    const programme = this.allProgrammes.find(p => p.id == data.id);
-    if (programme != null) {
-      return { isValid: false, message: `ID must be unique. Conflicts with "${programme.name}".` };
-    }
-
-    if (data.name == null) {
-      return { isValid: false, message: 'Name is required.' };
-    }
-
-    if (data.shortDescription == null) {
-      return { isValid: false, message: 'Description is required.' };
-    }
-
-    if (data.active == null) {
-      return { isValid: false, message: 'Internal Error' };
-    }
-
-    return { isValid: true, message: '' };
+  selectProgramme = (programme) => {
+    this.setState({ selectedProgramme: programme }, () => this.showAddModal());
   }
 
   render() {
@@ -238,7 +225,7 @@ class App extends React.Component {
           <FormGroup row>
             <Label for="search" sm={2}>Search</Label>
             <Col sm={8}>
-              <Input type="text" name="search" id="search" onChange={this.filterProgrammes}/>
+              <Input type="text" name="search" id="search" onChange={e => this.refreshProgrammesHandler(null, e)}/>
             </Col>
             <Button color="success" onClick={this.showAddModal}>
               Add
@@ -248,11 +235,11 @@ class App extends React.Component {
         <Table>
           <thead>
             <tr>
-              <th onClick={() => this.sortProgrammes({ sortBy: 'id' })}>
+              <th onClick={() => this.refreshProgrammesHandler({ sortBy: 'id' })}>
                 ID
                 { sortById }
               </th>
-              <th onClick={() => this.sortProgrammes({ sortBy: 'name' })}>
+              <th onClick={() => this.refreshProgrammesHandler({ sortBy: 'name' })}>
                 Name
                 { sortByName }
               </th>
@@ -263,51 +250,22 @@ class App extends React.Component {
           </thead>
           <tbody>
             {this.state.programmes.map(programme => (
-              <ProgrammeComponent programme={programme} key={programme.id} remove={this.removeProgramme}/>
+              <ProgrammeComponent
+                programme={programme}
+                key={programme.id}
+                remove={this.removeProgramme}
+                select={this.selectProgramme}
+              />
             ))}
           </tbody>
         </Table>
-        <Modal isOpen={this.state.addModal}>
-          <ModalHeader>Add Programme</ModalHeader>
-          <ModalBody>
-            <Form onSubmit={e => e.preventDefault()}>
-              <FormGroup row>
-                <Label for="id" sm={2}>ID</Label>
-                <Col sm={10}>
-                  <Input type="text" name="id" id="id" onChange={this.handleAddProgramme}/>
-                </Col>
-              </FormGroup>
-              <FormGroup row>
-                <Label for="name" sm={2}>Name</Label>
-                <Col sm={10}>
-                  <Input type="text" name="name" id="name" onChange={this.handleAddProgramme}/>
-                </Col>
-              </FormGroup>
-              <FormGroup row>
-                <Label for="shortDescription" sm={2}>Description</Label>
-                <Col sm={10}>
-                  <Input type="text" name="shortDescription" id="shortDescription" onChange={this.handleAddProgramme}/>
-                </Col>
-              </FormGroup>
-              <FormGroup row>
-                <Label for="active" sm={2}>Active</Label>
-                <Col sm={10}>
-                  <FormGroup check inline>
-                    <Label check>
-                      <Input type="checkbox" name="active" id="active" onChange={this.handleAddProgramme}/>{' '}
-                      Check me out
-                    </Label>
-                  </FormGroup>
-                </Col>
-              </FormGroup>
-            </Form>
-            <div className="text-danger">{ this.state.addProgrammeFormValid.message }</div>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="success" onClick={this.addProgramme} disabled={this.state.addProgrammeFormValid.isValid === false}>Add</Button>{' '}
-            <Button color="secondary" onClick={this.hideAddModal}>Cancel</Button>
-          </ModalFooter>
-        </Modal>
+        { this.state.addModal === true ?
+          <EditProgrammeComponent
+            allProgrammes={this.state.allProgrammes}
+            programme={this.state.selectedProgramme}
+            onClose={this.addProgramme}/> :
+          null
+        }
       </div>
     );
   }
